@@ -25,10 +25,10 @@ func max(x, y types.Integer) types.Integer {
 }
 
 func TestEval(t *testing.T) {
-	ctx := newContext(nil)
-	ctx.addName("x", types.Integer(1))
-	ctx.addName("y", types.Integer(2))
-	ctx.addMethod("max", func(values ...types.Integer) (types.Integer, error) {
+	ctx := NewEvalContext(nil)
+	ctx.AddName("x", types.Integer(1))
+	ctx.AddName("y", types.Integer(2))
+	ctx.AddMethod("max", func(values ...types.Integer) (types.Integer, error) {
 		return reduce(values, max, math.MinInt64), nil
 	})
 
@@ -66,19 +66,19 @@ func TestEval(t *testing.T) {
 	// }
 }
 
-func eval(expr string, context *context) (interface{}, error) {
-	scanner := NewScanner(expr)
-	tokens, err := scanner.Scan()
+func eval(expr string, context Context) (interface{}, error) {
+	scanner := newScanner(expr)
+	tokens, err := scanner.scan()
 	if err != nil {
 		return nil, err
 	}
 
-	parser := NewParser(tokens)
-	x, err := parser.Parse()
+	parser := newParser(tokens)
+	x, err := parser.parse()
 	if err != nil {
 		return nil, err
 	}
 
 	interpreter := newInterpreter(context)
-	return interpreter.Eval(x)
+	return interpreter.eval(x)
 }

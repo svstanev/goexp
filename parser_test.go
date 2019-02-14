@@ -86,6 +86,19 @@ func TestParse(t *testing.T) {
 			},
 			nil,
 		},
+
+		{
+			"-1 + 2",
+			BinaryExpr{
+				Left: UnaryExpr{
+					Value:    IntegerLiteralExpr{int64(1)},
+					Operator: Token{Sub, "-", nil, 0},
+				},
+				Right:    IntegerLiteralExpr{int64(2)},
+				Operator: Token{Add, "+", nil, 3},
+			},
+			nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -96,14 +109,14 @@ func TestParse(t *testing.T) {
 }
 
 func testParse(t *testing.T, str string, expectedExpr Expr, expectedErr error) {
-	s := NewScanner(str)
-	tokens, err := s.Scan()
+	s := newScanner(str)
+	tokens, err := s.scan()
 	if err != nil {
 		t.Error(err)
 	}
 
-	p := NewParser(tokens)
-	expr, err := p.Parse()
+	p := newParser(tokens)
+	expr, err := p.parse()
 
 	if diff := deep.Equal(err, expectedErr); diff != nil {
 		t.Error(diff)

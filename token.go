@@ -3,7 +3,8 @@ package goexp
 type TokenType int
 
 const (
-	EOF TokenType = iota
+	Unknown TokenType = iota
+	EOF
 
 	LeftParen  // (
 	RightParen // )

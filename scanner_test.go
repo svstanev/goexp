@@ -52,7 +52,7 @@ func TestScan(t *testing.T) {
 		{"\"\"", []Token{Token{String, "\"\"", "", 0}, Token{Type: EOF, Pos: 2}}, nil},
 		{"\"abc\"", []Token{Token{String, "\"abc\"", "abc", 0}, Token{Type: EOF, Pos: 5}}, nil},
 		{"\"ab\\\"c\"", []Token{Token{String, "\"ab\\\"c\"", "ab\\\"c", 0}, Token{Type: EOF, Pos: 7}}, nil},
-		{"'ab", []Token{}, &ScannerError{Message: "Unterminated string", Pos: 3}},
+		{"'ab", []Token{}, &scannerError{Message: "Unterminated string", Pos: 3}},
 		{"foo", []Token{Token{Identifier, "foo", nil, 0}, Token{Type: EOF, Pos: 3}}, nil},
 		{"<", []Token{Token{Less, "<", nil, 0}, Token{Type: EOF, Pos: 1}}, nil},
 		{"<=", []Token{Token{LessEqual, "<=", nil, 0}, Token{Type: EOF, Pos: 2}}, nil},
@@ -107,8 +107,8 @@ func TestScan(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
-			s := NewScanner(test.src)
-			tokens, err := s.Scan()
+			s := newScanner(test.src)
+			tokens, err := s.scan()
 
 			if diff := deep.Equal(err, test.expectedError); diff != nil {
 				t.Error(diff)

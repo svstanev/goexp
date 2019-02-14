@@ -2,12 +2,12 @@ package goexp
 
 import "fmt"
 
-type ParseError struct {
+type parseError struct {
 	token   Token
 	message string
 }
 
-func (pe ParseError) Error() string {
+func (pe parseError) Error() string {
 	return fmt.Sprintf("Parse Error at pos %d: %s", pe.token.Pos, pe.message)
 }
 
@@ -16,13 +16,13 @@ type parser struct {
 	current int
 }
 
-func NewParser(tokens []Token) *parser {
+func newParser(tokens []Token) *parser {
 	return &parser{
 		tokens: tokens,
 	}
 }
 
-func (p *parser) Parse() (Expr, error) {
+func (p *parser) parse() (Expr, error) {
 	p.current = 0
 	return p.expression()
 }
@@ -64,7 +64,7 @@ func (p *parser) consume(tokenType TokenType, msg string) (token Token, err erro
 	if p.check(tokenType) {
 		token = p.advance()
 	} else {
-		err = ParseError{
+		err = parseError{
 			token:   p.peek(),
 			message: msg,
 		}
@@ -226,22 +226,21 @@ func (p *parser) multiplication() (Expr, error) {
 	return left, nil
 }
 
-func (p *parser) unary() (Expr, error) {
-	// unary =  "!" | "-" call
+func (p *parser) unary() (expr Expr, err error) {
+	// unary =  ("!" | "-")? call
+	var op Token
 	if p.match(Not, Sub) {
-		op := p.previous()
-		expr, err := p.call()
-		if err != nil {
-			return nil, err
-		}
-		expr = UnaryExpr{
-			Operator: op,
-			Value:    expr,
-		}
-		return expr, nil
+		op = p.previous()
 	}
-
-	return p.call()
+	if expr, err = p.call(); err == nil {
+		if op.Type != Unknown {
+			expr = UnaryExpr{
+				Operator: op,
+				Value:    expr,
+			}
+		}
+	}
+	return
 }
 
 func (p *parser) call() (Expr, error) {
@@ -328,5 +327,5 @@ func (p *parser) primary() (Expr, error) {
 		return GroupingExpr{expr}, nil
 	}
 
-	return nil, ParseError{p.previous(), "Unknown token"}
+	return nil, parseError{p.previous(), "Unknown token"}
 }

@@ -15,16 +15,16 @@ var keywords = map[string]TokenType{
 	"not":   Not,
 }
 
-type ScannerError struct {
+type scannerError struct {
 	Message string
 	Pos     int
 }
 
-func (e *ScannerError) Error() string {
+func (e *scannerError) Error() string {
 	return fmt.Sprintf("Error @ %d: %s", e.Pos, e.Message)
 }
 
-type Scanner struct {
+type scanner struct {
 	source  []rune
 	start   int
 	current int
@@ -33,8 +33,8 @@ type Scanner struct {
 	err     error
 }
 
-func NewScanner(source string) *Scanner {
-	return &Scanner{
+func newScanner(source string) *scanner {
+	return &scanner{
 		source:  []rune(source),
 		start:   0,
 		current: 0,
@@ -43,7 +43,7 @@ func NewScanner(source string) *Scanner {
 	}
 }
 
-func (s *Scanner) Scan() ([]Token, error) {
+func (s *scanner) scan() ([]Token, error) {
 	s.reset()
 
 	for !s.isAtEnd() {
@@ -58,7 +58,7 @@ func (s *Scanner) Scan() ([]Token, error) {
 	return s.tokens, s.err
 }
 
-func (s *Scanner) scanToken() {
+func (s *scanner) scanToken() {
 	var c = s.advance()
 	switch c {
 	case '(':
@@ -160,7 +160,7 @@ func (s *Scanner) scanToken() {
 
 }
 
-func (s *Scanner) match(expected rune) bool {
+func (s *scanner) match(expected rune) bool {
 	if s.isAtEnd() {
 		return false
 	}
@@ -171,7 +171,7 @@ func (s *Scanner) match(expected rune) bool {
 	return true
 }
 
-func (s *Scanner) readNumber() {
+func (s *scanner) readNumber() {
 	isFloat := false
 
 	for isDigit(s.peek()) {
@@ -205,7 +205,7 @@ func (s *Scanner) readNumber() {
 	}
 }
 
-func (s *Scanner) readIdentifier() {
+func (s *scanner) readIdentifier() {
 	for isAlphaNumeric(s.peek()) {
 		s.advance()
 	}
@@ -217,7 +217,7 @@ func (s *Scanner) readIdentifier() {
 	s.addToken(tokenType, nil)
 }
 
-func (s *Scanner) readStringLiteral(term rune) {
+func (s *scanner) readStringLiteral(term rune) {
 	for (s.peek() != term || s.source[s.current-1] == '\\') && !s.isAtEnd() {
 		s.advance()
 	}
@@ -231,14 +231,14 @@ func (s *Scanner) readStringLiteral(term rune) {
 	}
 }
 
-func (s *Scanner) error(message string, args ...interface{}) {
-	s.err = &ScannerError{
+func (s *scanner) error(message string, args ...interface{}) {
+	s.err = &scannerError{
 		Message: fmt.Sprintf(message, args...),
 		Pos:     s.current,
 	}
 }
 
-func (s *Scanner) addToken(t TokenType, literal interface{}) {
+func (s *scanner) addToken(t TokenType, literal interface{}) {
 	lex := string(s.source[s.start:s.current])
 	tok := Token{
 		Type:    t,
@@ -249,22 +249,22 @@ func (s *Scanner) addToken(t TokenType, literal interface{}) {
 	s.addTok(tok)
 }
 
-func (s *Scanner) addTok(tok Token) {
+func (s *scanner) addTok(tok Token) {
 	s.tokens = append(s.tokens, tok)
 }
 
-func (s *Scanner) reset() {
+func (s *scanner) reset() {
 	s.current = 0
 	s.start = 0
 	s.tokens = make([]Token, 0)
 	s.err = nil
 }
 
-func (s *Scanner) isAtEnd() bool {
+func (s *scanner) isAtEnd() bool {
 	return s.current >= s.length
 }
 
-func (s *Scanner) peekNext() rune {
+func (s *scanner) peekNext() rune {
 	var i = s.current + 1
 	if i >= s.length {
 		return 0
@@ -272,14 +272,14 @@ func (s *Scanner) peekNext() rune {
 	return s.source[i]
 }
 
-func (s *Scanner) peek() rune {
+func (s *scanner) peek() rune {
 	if s.isAtEnd() {
 		return 0
 	}
 	return s.source[s.current]
 }
 
-func (s *Scanner) advance() rune {
+func (s *scanner) advance() rune {
 	s.current++
 	return s.source[s.current-1]
 }

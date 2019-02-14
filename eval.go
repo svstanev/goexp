@@ -42,13 +42,19 @@ type Context interface {
 	ResolveMethod(name string) (Method, bool)
 }
 
+type EvalContext interface {
+	Context
+	AddName(name string, value interface{}) error
+	AddMethod(name string, fn interface{}) error
+}
+
 type context struct {
-	parent  *context
+	parent  Context
 	vars    map[string]Var
 	methods map[string]Method
 }
 
-func newContext(parent *context) *context {
+func NewEvalContext(parent Context) EvalContext {
 	return &context{
 		parent:  parent,
 		vars:    make(map[string]Var),
@@ -56,7 +62,7 @@ func newContext(parent *context) *context {
 	}
 }
 
-func (ctx *context) addName(name string, value interface{}) error {
+func (ctx *context) AddName(name string, value interface{}) error {
 	if _, present := ctx.vars[name]; present {
 		return fmt.Errorf("Var %s already exists", name)
 	}
@@ -64,7 +70,7 @@ func (ctx *context) addName(name string, value interface{}) error {
 	return nil
 }
 
-func (ctx *context) addMethod(name string, fn interface{}) error {
+func (ctx *context) AddMethod(name string, fn interface{}) error {
 	if _, present := ctx.methods[name]; present {
 		return fmt.Errorf("Method %s already exists", name)
 	}
@@ -92,19 +98,19 @@ func (ctx *context) ResolveMethod(name string) (Method, bool) {
 	return nil, false
 }
 
-type Function func(args ...[]interface{}) (interface{}, error)
+// type Function func(args ...[]interface{}) (interface{}, error)
 
 type interpreter struct {
-	context *context
+	context Context
 }
 
-func newInterpreter(context *context) *interpreter {
+func newInterpreter(context Context) *interpreter {
 	return &interpreter{
 		context,
 	}
 }
 
-func (i *interpreter) Eval(expr Expr) (interface{}, error) {
+func (i *interpreter) eval(expr Expr) (interface{}, error) {
 	e := newEvaluator()
 	return e.Eval(expr, i.context)
 }
