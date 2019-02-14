@@ -227,10 +227,10 @@ func (p *parser) multiplication() (Expr, error) {
 }
 
 func (p *parser) unary() (Expr, error) {
-	// unary =  "!" | "-" primary
+	// unary =  "!" | "-" call
 	if p.match(Not, Sub) {
 		op := p.previous()
-		expr, err := p.primary()
+		expr, err := p.call()
 		if err != nil {
 			return nil, err
 		}

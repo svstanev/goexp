@@ -2,6 +2,7 @@ package goexp
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/svstanev/goexp/types"
 )
@@ -23,11 +24,17 @@ type Method interface {
 }
 
 type methodx struct {
-	f func(args []interface{}) (interface{}, error)
+	fn interface{}
 }
 
 func (m methodx) Invoke(args []interface{}) (interface{}, error) {
-	return m.Invoke(args)
+	fn := reflect.ValueOf(m.fn)
+	in := make([]reflect.Value, len(args))
+	for i, value := range args {
+		in[i] = reflect.ValueOf(value)
+	}
+	res := fn.Call(in)
+	return res[0].Interface(), nil
 }
 
 type Context interface {
@@ -57,11 +64,11 @@ func (ctx *context) addName(name string, value interface{}) error {
 	return nil
 }
 
-func (ctx *context) addMethod(name string, f func(args []interface{}) (interface{}, error)) error {
+func (ctx *context) addMethod(name string, fn interface{}) error {
 	if _, present := ctx.methods[name]; present {
 		return fmt.Errorf("Method %s already exists", name)
 	}
-	ctx.methods[name] = methodx{f}
+	ctx.methods[name] = methodx{fn}
 	return nil
 }
 
@@ -141,7 +148,7 @@ func (eval *evaluator) VisitBinaryExpr(e BinaryExpr, context VisitorContext) (in
 	if right, err = eval.Eval(e.Right, context); err != nil {
 		return nil, err
 	}
-	return binaryOp(left, right, e.Operator.Type)
+	return binaryOp(left, right, e.Operator)
 }
 
 func (eval *evaluator) VisitUnaryExpr(e UnaryExpr, context VisitorContext) (interface{}, error) {
@@ -151,7 +158,7 @@ func (eval *evaluator) VisitUnaryExpr(e UnaryExpr, context VisitorContext) (inte
 	if value, err = eval.Eval(e.Value, context); err != nil {
 		return nil, err
 	}
-	return unaryOp(value, e.Operator.Type)
+	return unaryOp(value, e.Operator)
 }
 
 func (eval *evaluator) EvalMany(exprs []Expr, context VisitorContext) ([]interface{}, error) {
@@ -226,19 +233,19 @@ func (eval *evaluator) VisitGroupingExpr(e GroupingExpr, context VisitorContext)
 
 // type Lazy func() (interface{}, error)
 
-func unaryOp(x interface{}, op TokenType) (interface{}, error) {
-	switch op {
+func unaryOp(x interface{}, op Token) (interface{}, error) {
+	switch op.Type {
 	case Not:
 		return not(x)
 	case Sub:
 		return negate(x)
 	default:
-		return nil, unaryOpNotSupportedError(x)
+		return nil, fmt.Errorf("Unknown operation: %s", op.Lexeme)
 	}
 }
 
-func binaryOp(x, y interface{}, op TokenType) (interface{}, error) {
-	switch op {
+func binaryOp(x, y interface{}, op Token) (interface{}, error) {
+	switch op.Type {
 	case Add:
 		return add(x, y)
 	case Sub:
@@ -266,7 +273,7 @@ func binaryOp(x, y interface{}, op TokenType) (interface{}, error) {
 	case Or:
 		return or(x, y)
 	default:
-		return nil, binaryOpNotSupportedError(x, y)
+		return nil, fmt.Errorf("Unknown operation: %s", op.Lexeme)
 	}
 }
 
@@ -356,7 +363,7 @@ func add(x, y interface{}) (result interface{}, err error) {
 	if adder, ok := x.(types.Adder); ok {
 		result, err = adder.Add(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "+")
 	}
 	return
 }
@@ -365,7 +372,7 @@ func sub(x, y interface{}) (res interface{}, err error) {
 	if subtractor, ok := x.(types.Subtractor); ok {
 		res, err = subtractor.Sub(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "-")
 	}
 	return
 }
@@ -374,7 +381,7 @@ func mul(x, y interface{}) (res interface{}, err error) {
 	if multiplexor, ok := x.(types.Multiplexor); ok {
 		res, err = multiplexor.Mul(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "*")
 	}
 	return
 }
@@ -383,7 +390,7 @@ func div(x, y interface{}) (res interface{}, err error) {
 	if divider, ok := x.(types.Divider); ok {
 		res, err = divider.Div(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "/")
 	}
 	return
 }
@@ -392,7 +399,7 @@ func mod(x, y interface{}) (res interface{}, err error) {
 	if modulo, ok := x.(types.Moduler); ok {
 		res, err = modulo.Mod(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "%")
 	}
 	return
 }
@@ -401,7 +408,7 @@ func not(x interface{}) (res interface{}, err error) {
 	if b, ok := toBoolean(x); ok {
 		res, err = b.Not(), nil
 	} else {
-		err = binaryOpNotSupportedError(x, nil)
+		err = unaryOpNotSupportedError(x, "not")
 	}
 	return
 }
@@ -410,7 +417,7 @@ func negate(x interface{}) (res interface{}, err error) {
 	if negator, ok := x.(types.Negator); ok {
 		res, err = negator.Negate()
 	} else {
-		err = binaryOpNotSupportedError(x, nil)
+		err = unaryOpNotSupportedError(x, "-")
 	}
 	return
 }
@@ -419,7 +426,7 @@ func equals(x, y interface{}) (res bool, err error) {
 	if ec, ok := x.(types.EqualityComparer); ok {
 		res, err = ec.Equals(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "==")
 	}
 	return
 }
@@ -428,26 +435,27 @@ func compare(x, y interface{}) (res int, err error) {
 	if comparer, ok := x.(types.Comparer); ok {
 		res, err = comparer.Compare(y)
 	} else {
-		err = binaryOpNotSupportedError(x, y)
+		err = binaryOpNotSupportedError(x, y, "cmp")
 	}
 	return
 }
 
 type notSupportedOpError struct {
 	x, y interface{}
+	op   string
 }
 
-func binaryOpNotSupportedError(x, y interface{}) error {
-	return notSupportedOpError{x, y}
+func binaryOpNotSupportedError(x, y interface{}, op string) notSupportedOpError {
+	return notSupportedOpError{x, y, op}
 }
 
-func unaryOpNotSupportedError(x interface{}) error {
-	return notSupportedOpError{x, nil}
+func unaryOpNotSupportedError(x interface{}, op string) notSupportedOpError {
+	return notSupportedOpError{x, nil, op}
 }
 
 func (err notSupportedOpError) Error() string {
 	if err.y != nil {
-		return fmt.Sprintf("Operation not supported for types %T and %T", err.x, err.y)
+		return fmt.Sprintf("Operation \"%v\" not supported for types %T and %T", err.op, err.x, err.y)
 	}
-	return fmt.Sprintf("Operation not supported for type %T", err.x)
+	return fmt.Sprintf("Operation \"%v\" not supported for type %T", err.op, err.x)
 }
