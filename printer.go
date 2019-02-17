@@ -3,6 +3,7 @@ package goexp
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var ops = map[TokenType]string{
@@ -11,6 +12,7 @@ var ops = map[TokenType]string{
 	Mul:          "*",
 	Div:          "/",
 	Modulo:       "%",
+	Power:        "**",
 	Less:         "<",
 	LessEqual:    "<=",
 	Greater:      ">",
@@ -90,26 +92,25 @@ func (p *printer) VisitNilLiteralExpr(e NilLiteralExpr, context VisitorContext) 
 }
 
 func (p *printer) VisitUnaryExpr(e UnaryExpr, context VisitorContext) (interface{}, error) {
-	str, err := p.printExpr(e.Value, context)
+	right, err := p.printExpr(e.Value, context)
 	if err != nil {
 		return nil, err
 	}
-	return fmt.Sprintf("%s%s", ops[e.Operator.Type], str), nil
+	return fmt.Sprintf("%s%s", ops[e.Operator.Type], right), nil
 }
 
 func (p *printer) VisitBinaryExpr(e BinaryExpr, context VisitorContext) (interface{}, error) {
-	var err error
-	var l, r string
-
-	if l, err = p.printExpr(e.Left, context); err != nil {
+	left, err := p.printExpr(e.Left, context)
+	if err != nil {
 		return nil, err
 	}
 
-	if r, err = p.printExpr(e.Right, context); err != nil {
+	right, err := p.printExpr(e.Right, context)
+	if err != nil {
 		return nil, err
 	}
 
-	return fmt.Sprintf("%s %s %s", l, ops[e.Operator.Type], r), nil
+	return fmt.Sprintf("%s %s %s", left, ops[e.Operator.Type], right), nil
 }
 
 func (p *printer) VisitCallExpr(e CallExpr, context VisitorContext) (interface{}, error) {
@@ -117,32 +118,19 @@ func (p *printer) VisitCallExpr(e CallExpr, context VisitorContext) (interface{}
 	if err != nil {
 		return nil, err
 	}
-
-	var res = ""
-	res += name
-	res += "("
-
-	for i, arg := range e.Args {
-		s, err := p.printExpr(arg, context)
-		if err != nil {
-			return nil, err
-		}
-		if i > 0 {
-			res += ", "
-		}
-		res += s
+	args, err := p.printArguments(e.Args, context)
+	if err != nil {
+		return nil, err
 	}
-
-	res += ")"
-	return res, nil
+	str := fmt.Sprintf("%s(%s)", name, args)
+	return str, nil
 }
 
 func (p *printer) VisitIdentifierExpr(e IdentifierExpr, context VisitorContext) (interface{}, error) {
 	var res = ""
 	if e.Expr != nil {
-		var s string
-		var err error
-		if s, err = p.printExpr(e.Expr, context); err != nil {
+		s, err := p.printExpr(e.Expr, context)
+		if err != nil {
 			return "", err
 		}
 		res += s
@@ -156,13 +144,34 @@ func (p *printer) VisitIdentifierExpr(e IdentifierExpr, context VisitorContext) 
 }
 
 func (p *printer) printExpr(expr Expr, context VisitorContext) (string, error) {
-	var err error
-	var res interface{}
-	if res, err = expr.Accept(p, context); err == nil {
-		if s, ok := res.(string); ok {
-			return s, nil
-		}
+	res, err := expr.Accept(p, context)
+	if err != nil {
+		return "", err
+	}
+	str, ok := res.(string)
+	if !ok {
 		err = errors.New("Unable to print expression")
 	}
-	return "", err
+	return str, err
+}
+
+func (p *printer) printArguments(args []Expr, context VisitorContext) (string, error) {
+	strs, err := p.printMany(args, context)
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(strs, ", "), nil
+}
+
+func (p *printer) printMany(exprs []Expr, context VisitorContext) ([]string, error) {
+	var strs = make([]string, len(exprs))
+	for i, x := range exprs {
+		str, err := p.printExpr(x, context)
+		if err != nil {
+			return nil, err
+		} else {
+			strs[i] = str
+		}
+	}
+	return strs, nil
 }
