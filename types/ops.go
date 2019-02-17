@@ -48,3 +48,7 @@ type Comparer interface {
 type BooleanConverter interface {
 	ToBoolean() Boolean
 }
+
+type SupportsPower interface {
+	Power(other interface{}) (interface{}, error)
+}

@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 )
 
 type Integer int64
@@ -53,6 +54,20 @@ func (n Integer) Div(other interface{}) (interface{}, error) {
 		return Float(float64(x) / y), nil
 	default:
 		return nil, notSupportedOperationError("/", n, other)
+	}
+}
+
+func (n Integer) Power(other interface{}) (interface{}, error) {
+	x := float64(int64(n))
+	switch other.(type) {
+	case Integer:
+		y := float64(int64(other.(Integer)))
+		return Integer(int64(math.Pow(x, y))), nil
+	case Float:
+		y := float64(other.(Float))
+		return Float(math.Pow(x, y)), nil
+	default:
+		return nil, notSupportedOperationError("**", n, other)
 	}
 }
 

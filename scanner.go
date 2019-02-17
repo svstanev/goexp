@@ -63,39 +63,41 @@ func (s *scanner) scanToken() {
 	switch c {
 	case '(':
 		s.addToken(LeftParen, nil)
-		break
-
 	case ')':
 		s.addToken(RightParen, nil)
-		break
+	case '[':
+		s.addToken(LeftBracket, nil)
+	case ']':
+		s.addToken(RightBracket, nil)
+	case '{':
+		s.addToken(LeftBrace, nil)
+	case '}':
+		s.addToken(RightBrace, nil)
 
 	case '+':
 		s.addToken(Add, nil)
-		break
 
 	case '-':
 		s.addToken(Sub, nil)
-		break
 
 	case '*':
-		s.addToken(Mul, nil)
-		break
+		if s.match('*') {
+			s.addToken(Power, nil)
+		} else {
+			s.addToken(Mul, nil)
+		}
 
 	case '/':
 		s.addToken(Div, nil)
-		break
 
 	case '%':
 		s.addToken(Modulo, nil)
-		break
 
 	case '.':
 		s.addToken(Period, nil)
-		break
 
 	case ',':
 		s.addToken(Comma, nil)
-		break
 
 	case '!':
 		if s.match('=') {
@@ -103,13 +105,11 @@ func (s *scanner) scanToken() {
 		} else {
 			s.addToken(Not, nil)
 		}
-		break
 
 	case '=':
 		if s.match('=') {
 			s.addToken(Equal, nil)
 		}
-		break
 
 	case '<':
 		if s.match('=') {
@@ -117,7 +117,6 @@ func (s *scanner) scanToken() {
 		} else {
 			s.addToken(Less, nil)
 		}
-		break
 
 	case '>':
 		if s.match('=') {
@@ -125,27 +124,22 @@ func (s *scanner) scanToken() {
 		} else {
 			s.addToken(Greater, nil)
 		}
-		break
 
 	case '&':
 		if s.match('&') {
 			s.addToken(And, nil)
 		}
-		break
 
 	case '|':
 		if s.match('|') {
 			s.addToken(Or, nil)
 		}
-		break
 
 	case '"', '\'':
 		s.readStringLiteral(c)
-		break
 
-	case ' ', '\t':
-		// ignore whitespaces
-		break
+	case ' ', '\t', '\r', '\n':
+		// whitespace - ignore
 
 	default:
 		if isDigit(c) {
@@ -155,7 +149,6 @@ func (s *scanner) scanToken() {
 		} else {
 			s.error("Unexpected character")
 		}
-		break
 	}
 
 }

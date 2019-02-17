@@ -6,19 +6,25 @@ const (
 	Unknown TokenType = iota
 	EOF
 
-	LeftParen  // (
-	RightParen // )
-	Comma      // ,
-	Period     // .
-	Add        // +
-	Sub        // -
-	Mul        // *
-	Div        // /
-	Modulo     // %
+	LeftParen    // (
+	RightParen   // )
+	LeftBracket  // [
+	RightBracket // ]
+	LeftBrace    // {
+	RightBrace   // }
+	Comma        // ,
+	Period       // .
+	Add          // +
+	Sub          // -
+	Mul          // *
+	Div          // /
+	Modulo       // %
+	Power        // **
 
 	And // &&
 	Or  // ||
 	Not // !
+	Xor // xor
 
 	NotEqual     // !=
 	Equal        // ==

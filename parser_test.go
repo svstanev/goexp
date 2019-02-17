@@ -13,6 +13,33 @@ func TestParse(t *testing.T) {
 		err  error
 	}{
 		{
+			"x || y && z",
+			BinaryExpr{
+				Left: IdentifierExpr{"x", nil},
+				Right: BinaryExpr{
+					Left:     IdentifierExpr{"y", nil},
+					Right:    IdentifierExpr{"z", nil},
+					Operator: Token{And, "&&", nil, 7},
+				},
+				Operator: Token{Or, "||", nil, 2},
+			},
+			nil,
+		},
+
+		{
+			"!x && y",
+			BinaryExpr{
+				Left: UnaryExpr{
+					Value:    IdentifierExpr{"x", nil},
+					Operator: Token{Not, "!", nil, 0},
+				},
+				Right:    IdentifierExpr{"y", nil},
+				Operator: Token{And, "&&", nil, 3},
+			},
+			nil,
+		},
+
+		{
 			"1 + 2",
 			BinaryExpr{
 				Left:     IntegerLiteralExpr{int64(1)},

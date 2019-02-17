@@ -39,6 +39,8 @@ func TestEval(t *testing.T) {
 	}{
 		{"1 + 2", types.Integer(3), nil},
 		{"max(x + y, 5, 3 * x * y)", types.Integer(6), nil},
+		{"2 ** 3", types.Integer(8), nil},
+		{"2.5 ** 3", types.Float(15.625), nil},
 
 		{"1 < 'foo'", nil, binaryOpNotSupportedError(types.Integer(1), types.String("foo"), "cmp")},
 	}

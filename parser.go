@@ -73,24 +73,25 @@ func (p *parser) consume(tokenType TokenType, msg string) (token Token, err erro
 }
 
 func (p *parser) expression() (Expr, error) {
-	return p.or()
+	return p.logicalOr()
 }
 
-func (p *parser) or() (Expr, error) {
+func (p *parser) logicalOr() (Expr, error) {
 	// or = and "||" and
-	var left, right Expr
-	var err error
-	var op Token
 
-	if left, err = p.and(); err != nil {
+	left, err := p.logicalAnd()
+	if err != nil {
 		return nil, err
 	}
 
 	for p.match(Or) {
-		op = p.previous()
-		if right, err = p.and(); err != nil {
+		op := p.previous()
+
+		right, err := p.logicalAnd()
+		if err != nil {
 			return nil, err
 		}
+
 		left = BinaryExpr{
 			Left:     left,
 			Right:    right,
@@ -101,20 +102,18 @@ func (p *parser) or() (Expr, error) {
 	return left, nil
 }
 
-func (p *parser) and() (Expr, error) {
-	// and = equality "&&" equality
+func (p *parser) logicalAnd() (Expr, error) {
+	// logicalAnd = logicalNot "&&" logicalNot
 
-	var left, right Expr
-	var err error
-	var op Token
-
-	if left, err = p.equality(); err != nil {
+	left, err := p.logicalNot()
+	if err != nil {
 		return nil, err
 	}
 
 	for p.match(And) {
-		op = p.previous()
-		if right, err = p.equality(); err != nil {
+		op := p.previous()
+		right, err := p.logicalNot()
+		if err != nil {
 			return nil, err
 		}
 		left = BinaryExpr{
@@ -127,23 +126,37 @@ func (p *parser) and() (Expr, error) {
 	return left, nil
 }
 
-func (p *parser) equality() (Expr, error) {
-	// equality = comparison "==" | "!=" comparison
-
-	var expr, right Expr
-	var err error
+func (p *parser) logicalNot() (Expr, error) {
+	// logicalNot = (Not)? equality
 	var op Token
-
-	if expr, err = p.comparison(); err != nil {
+	if p.match(Not) {
+		op = p.previous()
+	}
+	expr, err := p.equality()
+	if err != nil {
 		return nil, err
 	}
+	if op.Type != Unknown {
+		expr = UnaryExpr{
+			Value:    expr,
+			Operator: op,
+		}
+	}
+	return expr, nil
+}
 
+func (p *parser) equality() (Expr, error) {
+	// equality = logicalNot (("==" | "!=") logicalNot)*
+	expr, err := p.comparison()
+	if err != nil {
+		return nil, err
+	}
 	for p.match(Equal, NotEqual) {
-		op = p.previous()
-		if right, err = p.comparison(); err != nil {
+		op := p.previous()
+		right, err := p.comparison()
+		if err != nil {
 			return nil, err
 		}
-
 		expr = BinaryExpr{
 			Left:     expr,
 			Right:    right,
@@ -156,91 +169,106 @@ func (p *parser) equality() (Expr, error) {
 
 func (p *parser) comparison() (Expr, error) {
 	// comparison = addition "<" | "<=" | ">" | ">=" addition
-	var left, right Expr
-	var err error
-	var op Token
-
-	if left, err = p.addition(); err != nil {
+	expr, err := p.addition()
+	if err != nil {
 		return nil, err
 	}
 	for p.match(Less, LessEqual, Greater, GreaterEqual) {
-		op = p.previous()
-		if right, err = p.addition(); err != nil {
+		op := p.previous()
+		right, err := p.addition()
+		if err != nil {
 			return nil, err
 		}
-		left = BinaryExpr{
-			Left:     left,
+		expr = BinaryExpr{
+			Left:     expr,
 			Right:    right,
 			Operator: op,
 		}
 	}
-	return left, nil
+	return expr, nil
 }
 
 func (p *parser) addition() (Expr, error) {
 	// addition = mult "+" | "-" mult
-	var left, right Expr
-	var err error
-	var op Token
-
-	if left, err = p.multiplication(); err != nil {
+	expr, err := p.multiplication()
+	if err != nil {
 		return nil, err
 	}
-
 	for p.match(Add, Sub) {
-		op = p.previous()
-		if right, err = p.multiplication(); err != nil {
+		op := p.previous()
+		right, err := p.multiplication()
+		if err != nil {
 			return nil, err
 		}
-		left = BinaryExpr{
-			Left:     left,
+		expr = BinaryExpr{
+			Left:     expr,
 			Right:    right,
 			Operator: op,
 		}
 	}
 
-	return left, nil
+	return expr, nil
 }
 
 func (p *parser) multiplication() (Expr, error) {
-	// addition = unary "*" | "/" unary
-	var left, right Expr
-	var err error
-	var op Token
-
-	if left, err = p.unary(); err != nil {
+	// addition = unary ("*" | "/" | "%") unary
+	expr, err := p.power()
+	if err != nil {
 		return nil, err
 	}
-	for p.match(Mul, Div) {
-		op = p.previous()
-		if right, err = p.unary(); err != nil {
+	for p.match(Mul, Div, Modulo) {
+		op := p.previous()
+		right, err := p.power()
+		if err != nil {
 			return nil, err
 		}
-		left = BinaryExpr{
-			Left:     left,
+		expr = BinaryExpr{
+			Left:     expr,
 			Right:    right,
 			Operator: op,
 		}
 	}
-
-	return left, nil
+	return expr, nil
 }
 
-func (p *parser) unary() (expr Expr, err error) {
-	// unary =  ("!" | "-")? call
-	var op Token
-	if p.match(Not, Sub) {
-		op = p.previous()
+func (p *parser) power() (Expr, error) {
+	expr, err := p.negate()
+	if err != nil {
+		return nil, err
 	}
-	if expr, err = p.call(); err == nil {
-		if op.Type != Unknown {
-			expr = UnaryExpr{
-				Operator: op,
-				Value:    expr,
-			}
+	for p.match(Power) {
+		op := p.previous()
+		right, err := p.negate()
+		if err != nil {
+			return nil, err
+		}
+		expr = BinaryExpr{
+			Left:     expr,
+			Right:    right,
+			Operator: op,
 		}
 	}
-	return
+	return expr, nil
+}
+
+func (p *parser) negate() (Expr, error) {
+	// unary =  ("-")? call
+
+	var op Token
+	if p.match(Sub) {
+		op = p.previous()
+	}
+	expr, err := p.call()
+	if err != nil {
+		return nil, err
+	}
+	if op.Type != Unknown {
+		expr = UnaryExpr{
+			Operator: op,
+			Value:    expr,
+		}
+	}
+	return expr, nil
 }
 
 func (p *parser) call() (Expr, error) {

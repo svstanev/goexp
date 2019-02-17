@@ -52,12 +52,14 @@ func main() {
 ```
 expression      -> logical_or
 logical_or      -> logical_and (("||") logical_and)*;
-logical_and     -> equality (("&&") equality)*;
+logical_and     -> logical_not (("&&") logical_not)*;
+logical_not			-> "!"? equality;
 equality        -> comparison (("==" | "!=") comparison)*;
 comparison      -> addition (("<" | "<=" | ">" | ">=") addition)*;
 addition        -> multiplication (("+" | "-") multiplication)*;
-multiplication  -> unary (("*" | "/") unary)*;
-unary           -> ("!" | "-")? call;
+multiplication  -> negate (("*" | "/" | "%") negate)*;
+power 					-> negate ("**" negate)*;
+negate          -> "-"? call;
 call            -> primary (("(" arguments? ")") | ("." IDENTIFIER))*;
 primary         -> "false" | "true" | "nil" | IDENTIFIER | NUMBER | STRING | "(" expression ")";
 

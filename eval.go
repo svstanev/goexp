@@ -262,6 +262,8 @@ func binaryOp(x, y interface{}, op Token) (interface{}, error) {
 		return div(x, y)
 	case Modulo:
 		return mod(x, y)
+	case Power:
+		return pow(x, y)
 	case Less:
 		return lt(x, y)
 	case LessEqual:
@@ -406,6 +408,15 @@ func mod(x, y interface{}) (res interface{}, err error) {
 		res, err = modulo.Mod(y)
 	} else {
 		err = binaryOpNotSupportedError(x, y, "%")
+	}
+	return
+}
+
+func pow(x, y interface{}) (res interface{}, err error) {
+	if pow, ok := x.(types.SupportsPower); ok {
+		res, err = pow.Power(y)
+	} else {
+		err = binaryOpNotSupportedError(x, y, "**")
 	}
 	return
 }
